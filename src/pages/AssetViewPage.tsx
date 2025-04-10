@@ -1,16 +1,16 @@
 
 import Layout from '@/components/Layout';
-import Dashboard from '@/components/Dashboard';
+import AssetView from '@/components/AssetView';
 import { AssetProvider } from '@/context/AssetContext';
 
-const Index = () => {
+const AssetViewPage = () => {
   return (
     <AssetProvider>
       <Layout>
-        <Dashboard />
+        <AssetView />
       </Layout>
     </AssetProvider>
   );
 };
 
-export default Index;
+export default AssetViewPage;
