@@ -2,14 +2,17 @@
 import Layout from '@/components/Layout';
 import Dashboard from '@/components/Dashboard';
 import { AssetProvider } from '@/context/AssetContext';
+import { DatabaseProvider } from '@/context/DatabaseContext';
 
 const Index = () => {
   return (
-    <AssetProvider>
-      <Layout>
-        <Dashboard />
-      </Layout>
-    </AssetProvider>
+    <DatabaseProvider>
+      <AssetProvider>
+        <Layout>
+          <Dashboard />
+        </Layout>
+      </AssetProvider>
+    </DatabaseProvider>
   );
 };
 

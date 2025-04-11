@@ -2,9 +2,36 @@
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Database, Server, Lock, Shield } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useState } from 'react';
+import { Database, Server, Lock, Shield, RefreshCw, Check, X } from 'lucide-react';
+import { useDatabase } from '@/context/DatabaseContext';
+import { toast } from 'sonner';
 
 const DatabasePage = () => {
+  const { isConnected, connectionConfig, connect, disconnect, connecting } = useDatabase();
+  
+  const [host, setHost] = useState(connectionConfig?.host || 'localhost');
+  const [port, setPort] = useState(connectionConfig?.port || 3306);
+  const [user, setUser] = useState(connectionConfig?.user || 'root');
+  const [password, setPassword] = useState(connectionConfig?.password || '');
+  const [database, setDatabase] = useState(connectionConfig?.database || 'itams');
+  const [showForm, setShowForm] = useState(!isConnected);
+
+  const handleConnect = async () => {
+    const config = { host, port, user, password, database };
+    const success = await connect(config);
+    if (success) {
+      setShowForm(false);
+    }
+  };
+
+  const handleDisconnect = () => {
+    disconnect();
+    setShowForm(true);
+  };
+
   return (
     <Layout>
       <div>
@@ -18,13 +45,99 @@ const DatabasePage = () => {
             <div>
               <h3 className="text-lg font-semibold">MySQL Database Connection</h3>
               <p className="text-muted-foreground">
-                Connect to your MySQL database to start storing asset data permanently.
+                {isConnected 
+                  ? "Your database is connected. Asset data will be stored permanently."
+                  : "Connect to your MySQL database to start storing asset data permanently."
+                }
               </p>
             </div>
             <div className="md:ml-auto">
-              <Button>Configure Connection</Button>
+              {isConnected ? (
+                <Button onClick={() => setShowForm(!showForm)} variant="outline">
+                  {showForm ? "Hide Settings" : "View Settings"}
+                </Button>
+              ) : (
+                <Button onClick={() => setShowForm(!showForm)}>
+                  Configure Connection
+                </Button>
+              )}
             </div>
           </div>
+          
+          {showForm && (
+            <Card className="p-4 mb-6 bg-muted/50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="space-y-2">
+                  <Label htmlFor="host">Host</Label>
+                  <Input 
+                    id="host" 
+                    value={host} 
+                    onChange={(e) => setHost(e.target.value)}
+                    placeholder="localhost"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="port">Port</Label>
+                  <Input 
+                    id="port" 
+                    type="number" 
+                    value={port} 
+                    onChange={(e) => setPort(Number(e.target.value))}
+                    placeholder="3306"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="user">Username</Label>
+                  <Input 
+                    id="user" 
+                    value={user} 
+                    onChange={(e) => setUser(e.target.value)}
+                    placeholder="root"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="database">Database Name</Label>
+                  <Input 
+                    id="database" 
+                    value={database} 
+                    onChange={(e) => setDatabase(e.target.value)}
+                    placeholder="itams"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                {isConnected && (
+                  <Button onClick={handleDisconnect} variant="outline" className="text-red-500">
+                    <X className="h-4 w-4 mr-2" />
+                    Disconnect
+                  </Button>
+                )}
+                <Button onClick={handleConnect} disabled={connecting}>
+                  {connecting ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      {isConnected ? "Reconnect" : "Connect"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </Card>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-muted rounded-lg p-4">
@@ -32,7 +145,9 @@ const DatabasePage = () => {
                 <Server className="h-4 w-4 text-muted-foreground" />
                 <h4 className="font-medium">Database Server</h4>
               </div>
-              <p className="text-sm text-muted-foreground">Not configured</p>
+              <p className="text-sm text-muted-foreground">
+                {isConnected ? `${host}:${port}` : "Not configured"}
+              </p>
             </div>
             
             <div className="bg-muted rounded-lg p-4">
@@ -40,7 +155,9 @@ const DatabasePage = () => {
                 <Database className="h-4 w-4 text-muted-foreground" />
                 <h4 className="font-medium">Database Name</h4>
               </div>
-              <p className="text-sm text-muted-foreground">Not configured</p>
+              <p className="text-sm text-muted-foreground">
+                {isConnected ? database : "Not configured"}
+              </p>
             </div>
             
             <div className="bg-muted rounded-lg p-4">
@@ -48,7 +165,9 @@ const DatabasePage = () => {
                 <Lock className="h-4 w-4 text-muted-foreground" />
                 <h4 className="font-medium">Authentication</h4>
               </div>
-              <p className="text-sm text-muted-foreground">Not configured</p>
+              <p className="text-sm text-muted-foreground">
+                {isConnected ? `User: ${user}` : "Not configured"}
+              </p>
             </div>
             
             <div className="bg-muted rounded-lg p-4">
@@ -56,7 +175,9 @@ const DatabasePage = () => {
                 <Shield className="h-4 w-4 text-muted-foreground" />
                 <h4 className="font-medium">Connection Status</h4>
               </div>
-              <p className="text-sm text-muted-foreground text-yellow-700">Disconnected</p>
+              <p className={`text-sm font-medium ${isConnected ? 'text-green-700' : 'text-yellow-700'}`}>
+                {isConnected ? "Connected" : "Disconnected"}
+              </p>
             </div>
           </div>
         </Card>
@@ -65,7 +186,7 @@ const DatabasePage = () => {
           <h3 className="text-lg font-semibold mb-4">Database Schema Information</h3>
           <p className="text-muted-foreground mb-6">
             The ITAMS application uses the following database schema to store asset information.
-            Connect your database to implement persistent storage.
+            {!isConnected && " Connect your database to implement persistent storage."}
           </p>
           
           <div className="bg-muted/30 p-4 rounded-lg overflow-x-auto">
