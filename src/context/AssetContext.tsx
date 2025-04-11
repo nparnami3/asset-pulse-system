@@ -1,6 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { fetchAllAssets as apiFetchAssets } from '@/utils/apiConnection';
+import { useApi } from '@/context/ApiContext';
 
 export interface Asset {
   asset_id: string;
@@ -70,6 +72,7 @@ interface AssetContextType {
   setFilter: (filter: AssetFilter) => void;
   filter: AssetFilter;
   loading: boolean;
+  refreshAssets: () => Promise<void>;
 }
 
 const AssetContext = createContext<AssetContextType | undefined>(undefined);
@@ -220,10 +223,38 @@ const initialAssets: Asset[] = [
 ];
 
 export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isConnected: apiConnected } = useApi();
   const [assets, setAssets] = useState<Asset[]>(initialAssets);
   const [filter, setFilter] = useState<AssetFilter>({});
   const [filteredAssets, setFilteredAssets] = useState<Asset[]>(assets);
   const [loading, setLoading] = useState(false);
+
+  // Fetch assets from API when connected
+  const refreshAssets = async () => {
+    if (!apiConnected) return;
+    
+    setLoading(true);
+    try {
+      console.log("Fetching assets from API");
+      const apiAssets = await apiFetchAssets();
+      if (apiAssets && apiAssets.length > 0) {
+        console.log(`Loaded ${apiAssets.length} assets from API`);
+        setAssets(apiAssets);
+      }
+    } catch (error) {
+      console.error("Error refreshing assets from API:", error);
+      toast.error("Failed to load assets from API");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Load assets from API on mount or when API connection changes
+  useEffect(() => {
+    if (apiConnected) {
+      refreshAssets();
+    }
+  }, [apiConnected]);
 
   // Update filtered assets when assets or filter changes
   useEffect(() => {
@@ -322,7 +353,8 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         filteredAssets,
         setFilter,
         filter,
-        loading
+        loading,
+        refreshAssets
       }}
     >
       {children}

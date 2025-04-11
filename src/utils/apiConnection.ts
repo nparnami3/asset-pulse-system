@@ -76,7 +76,21 @@ export const testApiConnection = async (): Promise<boolean> => {
 export const fetchAllAssets = async (): Promise<Asset[]> => {
   try {
     const config = getApiConfig();
-    const response = await fetch(`${config.url}/api/assets`);
+    
+    // Add timeout to the fetch request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
+    const response = await fetch(`${config.url}/api/assets`, {
+      signal: controller.signal,
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    
+    // Clear the timeout
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch assets: ${response.status}`);
@@ -86,7 +100,7 @@ export const fetchAllAssets = async (): Promise<Asset[]> => {
     return data;
   } catch (error) {
     console.error("Error fetching assets:", error);
-    toast.error("Failed to fetch assets from server");
+    toast.error(`Failed to fetch assets: ${error.message || 'Unknown error'}`);
     return [];
   }
 };
@@ -112,7 +126,7 @@ export const addAsset = async (asset: Asset): Promise<Asset | null> => {
     return data;
   } catch (error) {
     console.error("Error adding asset:", error);
-    toast.error("Failed to add asset");
+    toast.error(`Failed to add asset: ${error.message || 'Unknown error'}`);
     return null;
   }
 };
@@ -138,7 +152,7 @@ export const updateAsset = async (id: string, asset: Asset): Promise<Asset | nul
     return data;
   } catch (error) {
     console.error("Error updating asset:", error);
-    toast.error("Failed to update asset");
+    toast.error(`Failed to update asset: ${error.message || 'Unknown error'}`);
     return null;
   }
 };
@@ -159,7 +173,7 @@ export const deleteAsset = async (id: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error("Error deleting asset:", error);
-    toast.error("Failed to delete asset");
+    toast.error(`Failed to delete asset: ${error.message || 'Unknown error'}`);
     return false;
   }
 };
@@ -168,6 +182,9 @@ export const deleteAsset = async (id: string): Promise<boolean> => {
 export const importAssets = async (assets: Asset[]): Promise<boolean> => {
   try {
     const config = getApiConfig();
+    console.log("Importing assets via API:", config.url);
+    console.log("Number of assets to import:", assets.length);
+    
     const response = await fetch(`${config.url}/api/assets/import`, {
       method: 'POST',
       headers: {
@@ -177,14 +194,18 @@ export const importAssets = async (assets: Asset[]): Promise<boolean> => {
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to import assets: ${response.status}`);
+      const errorText = await response.text();
+      console.error("Import failed with status:", response.status, errorText);
+      throw new Error(`Failed to import assets: ${response.status} - ${errorText}`);
     }
     
-    toast.success(`Successfully imported ${assets.length} assets`);
+    const result = await response.json();
+    console.log("Import API response:", result);
+    toast.success(`Successfully imported ${assets.length} assets to database`);
     return true;
   } catch (error) {
     console.error("Error importing assets:", error);
-    toast.error("Failed to import assets");
+    toast.error(`Failed to import assets: ${error.message || 'Unknown error'}`);
     return false;
   }
 };

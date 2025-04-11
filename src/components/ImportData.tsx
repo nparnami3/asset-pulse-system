@@ -8,10 +8,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, FileSpreadsheet, Upload, Download, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAssets } from '@/context/AssetContext';
 import { readExcelFile, generateExcelTemplate } from '@/utils/excelHandler';
+import { importAssets as apiImportAssets } from '@/utils/apiConnection';
+import { useApi } from '@/context/ApiContext';
 import { toast } from 'sonner';
 
 const ImportData = () => {
   const { importAssets } = useAssets();
+  const { isConnected: apiConnected } = useApi();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,8 +57,21 @@ const ImportData = () => {
         return;
       }
       
-      importAssets(assets);
-      setSuccess(`Successfully imported ${assets.length} assets`);
+      if (apiConnected) {
+        // If API is connected, use it for import
+        const success = await apiImportAssets(assets);
+        if (success) {
+          // After successful API import, refresh local data
+          importAssets(assets);
+          setSuccess(`Successfully imported ${assets.length} assets via API`);
+        } else {
+          throw new Error('API import failed');
+        }
+      } else {
+        // Fall back to local import if API not connected
+        importAssets(assets);
+        setSuccess(`Successfully imported ${assets.length} assets locally`);
+      }
       
       // Clear file input
       if (fileInputRef.current) {
@@ -64,7 +80,7 @@ const ImportData = () => {
       setFile(null);
     } catch (error) {
       console.error('Import error:', error);
-      setError('Error importing data. Please check file format and try again.');
+      setError(`Error importing data: ${error.message || 'Please check file format and try again'}`);
     } finally {
       setLoading(false);
     }
@@ -139,6 +155,11 @@ const ImportData = () => {
               <li>Asset IDs will be automatically generated</li>
               <li>Maximum file size: 5MB</li>
               <li>Large files may take a few moments to process</li>
+              {apiConnected ? (
+                <li className="text-green-600 font-medium">API Connected: Data will be imported to database</li>
+              ) : (
+                <li className="text-amber-600 font-medium">API Not Connected: Data will only be imported locally</li>
+              )}
             </ul>
           </div>
         </Card>
