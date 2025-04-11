@@ -31,18 +31,42 @@ export const isApiConfigured = (): boolean => {
   return !!localStorage.getItem('itams-api-config');
 };
 
-// Test API connection
+// Test API connection with more detailed error handling
 export const testApiConnection = async (): Promise<boolean> => {
   try {
     const config = getApiConfig();
-    const response = await fetch(`${config.url}/api/health`);
+    console.log("Testing API connection to:", config.url);
+    
+    // Add timeout to the fetch request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(`${config.url}/api/health`, {
+      signal: controller.signal,
+      // Add no-cache to prevent cached responses
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    
+    // Clear the timeout
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
-      throw new Error(`API server responded with status: ${response.status}`);
+      console.error(`API server responded with status: ${response.status}`);
+      return false;
     }
+    
+    const data = await response.json();
+    console.log("API health check response:", data);
     
     return true;
   } catch (error) {
+    if (error.name === 'AbortError') {
+      console.error("API connection timeout - server not responding");
+      return false;
+    }
     console.error("API connection error:", error);
     return false;
   }

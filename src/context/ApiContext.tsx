@@ -41,24 +41,26 @@ export const ApiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateApiConfig = (config: ApiConfig) => {
     setApiConfig(config);
     saveApiConfig(config);
+    toast.success("API configuration updated");
   };
 
   const testConnection = async (): Promise<boolean> => {
     setConnecting(true);
     try {
+      console.log("Testing connection to:", apiConfig.url);
       const connected = await testApiConnection();
       setIsConnected(connected);
       
       if (connected) {
         toast.success("Successfully connected to API server");
       } else {
-        toast.error("Failed to connect to API server");
+        toast.error("Failed to connect to API server. Make sure the server is running at " + apiConfig.url);
       }
       
       return connected;
     } catch (error) {
       console.error("Error testing connection:", error);
-      toast.error("Error connecting to API server");
+      toast.error(`Connection error: ${error.message || 'Unknown error'}`);
       return false;
     } finally {
       setConnecting(false);
