@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, FileSpreadsheet, Upload, Download, AlertCircle, CheckCircle, ServerOff } from 'lucide-react';
 import { useAssets } from '@/context/AssetContext';
 import { readExcelFile, generateExcelTemplate } from '@/utils/excelHandler';
-import { importAssets as apiImportAssets, testApiConnection } from '@/utils/apiConnection';
+import { importAssets as apiImportAssets, testApiConnection } from '@/utils/api';
 import { useApi } from '@/context/ApiContext';
 import { toast } from 'sonner';
 

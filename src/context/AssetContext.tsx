@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { fetchAllAssets } from '@/utils/apiConnection';
+import { fetchAllAssets } from '@/utils/api';
 import { useApi } from '@/context/ApiContext';
 
 export interface Asset {

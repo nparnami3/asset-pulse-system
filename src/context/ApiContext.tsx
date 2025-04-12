@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
@@ -7,7 +6,7 @@ import {
   saveApiConfig,
   isApiConfigured,
   testApiConnection
-} from '@/utils/apiConnection';
+} from '@/utils/api';
 
 interface ApiContextType {
   isConnected: boolean;
@@ -24,7 +23,6 @@ export const ApiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [connecting, setConnecting] = useState<boolean>(false);
   const [apiConfig, setApiConfig] = useState<ApiConfig>(getApiConfig());
 
-  // Check for existing configuration on mount
   useEffect(() => {
     const checkConnection = async () => {
       if (isApiConfigured()) {
@@ -54,7 +52,6 @@ export const ApiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveApiConfig(config);
     toast.success("API configuration updated");
     
-    // Test the new configuration immediately
     const connected = await testConnection();
     if (connected) {
       toast.success("Successfully connected to new API URL");
