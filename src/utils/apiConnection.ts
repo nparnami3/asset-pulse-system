@@ -1,187 +1,182 @@
+
 import { toast } from "sonner";
 import { Asset } from "@/context/AssetContext";
 
-const API_URL = "http://localhost:3001"; // Default API URL
-
-export interface ApiConfig {
+// Store API configuration
+interface ApiConfig {
   url: string;
+  token?: string;
 }
 
-// Get the API configuration from localStorage
+// Default API configuration
+const defaultConfig: ApiConfig = {
+  url: "http://localhost:3001",
+  token: ""
+};
+
+// Get stored API configuration from localStorage
 export const getApiConfig = (): ApiConfig => {
-  const storedConfig = localStorage.getItem('itams-api-config');
-  if (!storedConfig) return { url: API_URL };
-  
   try {
-    return JSON.parse(storedConfig);
+    const savedConfig = localStorage.getItem('apiConfig');
+    if (savedConfig) {
+      return JSON.parse(savedConfig);
+    }
   } catch (error) {
-    console.error("Error parsing stored API config:", error);
-    return { url: API_URL };
+    console.error("Error loading API config:", error);
   }
+  return defaultConfig;
 };
 
 // Save API configuration to localStorage
 export const saveApiConfig = (config: ApiConfig): void => {
-  localStorage.setItem('itams-api-config', JSON.stringify(config));
+  try {
+    localStorage.setItem('apiConfig', JSON.stringify(config));
+  } catch (error) {
+    console.error("Error saving API config:", error);
+  }
 };
 
-// Check if API connection is configured
-export const isApiConfigured = (): boolean => {
-  return !!localStorage.getItem('itams-api-config');
-};
-
-// Test API connection with more detailed error handling
+// Test connection to API server
 export const testApiConnection = async (): Promise<boolean> => {
   try {
     const config = getApiConfig();
-    console.log("Testing API connection to:", config.url);
+    console.info("Testing API connection to:", config.url);
     
-    // Add timeout to the fetch request
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
+    // Try accessing the health check endpoint
     const response = await fetch(`${config.url}/api/health`, {
-      signal: controller.signal,
-      // Add no-cache to prevent cached responses
+      method: 'GET',
       headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+        'Content-Type': 'application/json',
+        ...(config.token ? { 'Authorization': `Bearer ${config.token}` } : {})
       }
     });
-    
-    // Clear the timeout
-    clearTimeout(timeoutId);
-    
+
     if (!response.ok) {
-      console.error(`API server responded with status: ${response.status}`);
+      console.error(`API connection failed with status: ${response.status}`);
       return false;
     }
-    
+
     const data = await response.json();
-    console.log("API health check response:", data);
-    
-    return true;
+    console.info("API health check response:", data);
+    return data.status === "ok";
   } catch (error) {
-    if (error.name === 'AbortError') {
-      console.error("API connection timeout - server not responding");
-      toast.error("Connection timeout - is your API server running?");
-      return false;
-    }
-    console.error("API connection error:", error);
-    toast.error(`API connection error: ${error.message || "Unknown error"}`);
+    console.error("API connection test failed:", error);
     return false;
   }
 };
 
-// Get all assets from API
-export const fetchAllAssets = async (): Promise<Asset[]> => {
+// Fetch assets from API
+export const fetchAssetsFromApi = async (): Promise<Asset[]> => {
   try {
     const config = getApiConfig();
-    console.log("Fetching assets from API:", config.url);
-    
-    // Add timeout to the fetch request
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    
-    const response = await fetch(`${config.url}/api/assets`, {
-      signal: controller.signal,
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      }
-    });
-    
-    // Clear the timeout
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("API responded with error:", response.status, errorText);
-      throw new Error(`Failed to fetch assets: ${response.status} - ${errorText}`);
+    console.info("Fetching assets from API:", config.url);
+
+    // Try connecting to API first
+    const isConnected = await testApiConnection();
+    if (!isConnected) {
+      throw new Error("Cannot connect to API server. Please check your API configuration.");
     }
     
-    const data = await response.json();
-    console.log("Successfully fetched assets from API:", data.length);
-    return data;
+    const response = await fetch(`${config.url}/api/assets`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(config.token ? { 'Authorization': `Bearer ${config.token}` } : {})
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch assets: ${response.status}`);
+    }
+
+    const assets = await response.json();
+    console.info("Successfully fetched assets from API:", assets.length);
+    return assets;
   } catch (error) {
-    console.error("Error fetching assets:", error);
-    toast.error(`Failed to fetch assets: ${error.message || 'Unknown error'}`);
+    console.error("Error fetching assets from API:", error);
+    toast.error(`Failed to load assets: ${error.message}`);
     return [];
   }
 };
 
-// Add a new asset
-export const addAsset = async (asset: Asset): Promise<Asset | null> => {
+// Create a new asset via API
+export const createAssetViaApi = async (asset: Asset): Promise<Asset | null> => {
   try {
     const config = getApiConfig();
+    
     const response = await fetch(`${config.url}/api/assets`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(config.token ? { 'Authorization': `Bearer ${config.token}` } : {})
       },
-      body: JSON.stringify(asset),
+      body: JSON.stringify(asset)
     });
-    
+
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to add asset: ${response.status} - ${errorText}`);
+      throw new Error(`Failed to create asset: ${response.status}`);
     }
-    
-    const data = await response.json();
-    toast.success("Asset added successfully!");
-    return data;
+
+    const createdAsset = await response.json();
+    toast.success("Asset created successfully");
+    return createdAsset;
   } catch (error) {
-    console.error("Error adding asset:", error);
-    toast.error(`Failed to add asset: ${error.message || 'Unknown error'}`);
+    console.error("Error creating asset:", error);
+    toast.error(`Failed to create asset: ${error.message}`);
     return null;
   }
 };
 
-// Update an existing asset
-export const updateAsset = async (id: string, asset: Asset): Promise<Asset | null> => {
+// Update an asset via API
+export const updateAssetViaApi = async (asset: Asset): Promise<Asset | null> => {
   try {
     const config = getApiConfig();
-    const response = await fetch(`${config.url}/api/assets/${id}`, {
+    
+    const response = await fetch(`${config.url}/api/assets/${asset.asset_id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        ...(config.token ? { 'Authorization': `Bearer ${config.token}` } : {})
       },
-      body: JSON.stringify(asset),
+      body: JSON.stringify(asset)
     });
-    
+
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to update asset: ${response.status} - ${errorText}`);
+      throw new Error(`Failed to update asset: ${response.status}`);
     }
-    
-    const data = await response.json();
-    toast.success("Asset updated successfully!");
-    return data;
+
+    const updatedAsset = await response.json();
+    toast.success("Asset updated successfully");
+    return updatedAsset;
   } catch (error) {
     console.error("Error updating asset:", error);
-    toast.error(`Failed to update asset: ${error.message || 'Unknown error'}`);
+    toast.error(`Failed to update asset: ${error.message}`);
     return null;
   }
 };
 
-// Delete an asset
-export const deleteAsset = async (id: string): Promise<boolean> => {
+// Delete an asset via API
+export const deleteAssetViaApi = async (assetId: string): Promise<boolean> => {
   try {
     const config = getApiConfig();
-    const response = await fetch(`${config.url}/api/assets/${id}`, {
+    
+    const response = await fetch(`${config.url}/api/assets/${assetId}`, {
       method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(config.token ? { 'Authorization': `Bearer ${config.token}` } : {})
+      }
     });
-    
+
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to delete asset: ${response.status} - ${errorText}`);
+      throw new Error(`Failed to delete asset: ${response.status}`);
     }
-    
-    toast.success("Asset deleted successfully!");
+
+    toast.success("Asset deleted successfully");
     return true;
   } catch (error) {
     console.error("Error deleting asset:", error);
-    toast.error(`Failed to delete asset: ${error.message || 'Unknown error'}`);
+    toast.error(`Failed to delete asset: ${error.message}`);
     return false;
   }
 };
@@ -190,29 +185,27 @@ export const deleteAsset = async (id: string): Promise<boolean> => {
 export const importAssets = async (assets: Asset[]): Promise<boolean> => {
   try {
     const config = getApiConfig();
-    console.log("Importing assets via API:", config.url);
-    console.log("Number of assets to import:", assets.length);
     
-    if (assets.length === 0) {
-      toast.error("No assets to import");
-      return false;
+    // Validate API connection first
+    const isConnected = await testApiConnection();
+    if (!isConnected) {
+      throw new Error("Cannot connect to API server. Please check your API configuration.");
     }
     
-    console.log("First asset sample:", assets[0]);
+    console.log(`Importing ${assets.length} assets to ${config.url}/api/assets/import`);
     
-    // Check API connection first
-    const isApiWorking = await testApiConnection();
-    if (!isApiWorking) {
-      toast.error("Cannot import - API connection failed. Is your server running?");
-      return false;
-    }
+    // Show loading toast
+    toast.loading(`Importing ${assets.length} assets...`, {
+      id: "import-toast"
+    });
     
     const response = await fetch(`${config.url}/api/assets/import`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(config.token ? { 'Authorization': `Bearer ${config.token}` } : {})
       },
-      body: JSON.stringify(assets),
+      body: JSON.stringify({ assets })
     });
     
     if (!response.ok) {
@@ -223,28 +216,38 @@ export const importAssets = async (assets: Asset[]): Promise<boolean> => {
       try {
         const errorJson = JSON.parse(errorText);
         if (errorJson.error && errorJson.error.includes("Duplicate entry")) {
-          toast.error("Import failed: Duplicate asset ID exists in the database. Try regenerating IDs.");
+          toast.error("Import failed: Duplicate asset ID exists in the database. Try regenerating IDs.", {
+            id: "import-toast"
+          });
           return false;
         }
       } catch (e) {
         // Not JSON, continue with regular error handling
       }
       
-      throw new Error(`Failed to import assets: ${response.status} - ${errorText}`);
+      toast.error(`Failed to import assets: ${response.status} - ${errorText}`, {
+        id: "import-toast"
+      });
+      return false;
     }
     
     const result = await response.json();
-    console.log("Import API response:", result);
-    toast.success(`Successfully imported ${assets.length} assets to database`);
+    toast.success(`Successfully imported ${result.imported || assets.length} assets`, {
+      id: "import-toast"
+    });
     return true;
   } catch (error) {
     console.error("Error importing assets:", error);
     
     // Special handling for duplicate key errors
     if (error.message && error.message.includes('Duplicate entry')) {
-      toast.error("Import failed: Asset with same ID already exists in database");
+      toast.error("Import failed: Asset with same ID already exists in database", {
+        id: "import-toast"
+      });
     } else {
-      toast.error(`Failed to import assets: ${error.message || 'Unknown error'}`);
+      toast.error(`Failed to import assets: ${error.message || 'Unknown error'}`, {
+        id: "import-toast"
+      });
     }
     return false;
   }
