@@ -1,6 +1,7 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { fetchAllAssets as apiFetchAssets } from '@/utils/apiConnection';
+import { fetchAllAssets } from '@/utils/apiConnection';
 import { useApi } from '@/context/ApiContext';
 
 export interface Asset {
@@ -236,7 +237,7 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setLoading(true);
     try {
       console.log("Fetching assets from API");
-      const apiAssets = await apiFetchAssets();
+      const apiAssets = await fetchAllAssets();
       if (apiAssets && apiAssets.length > 0) {
         console.log(`Loaded ${apiAssets.length} assets from API`);
         setAssets(apiAssets);

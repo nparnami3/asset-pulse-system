@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Asset } from "@/context/AssetContext";
 
 // Store API configuration
-interface ApiConfig {
+export interface ApiConfig {
   url: string;
   token?: string;
 }
@@ -25,6 +25,12 @@ export const getApiConfig = (): ApiConfig => {
     console.error("Error loading API config:", error);
   }
   return defaultConfig;
+};
+
+// Check if API is configured
+export const isApiConfigured = (): boolean => {
+  const config = getApiConfig();
+  return Boolean(config && config.url && config.url.trim() !== "");
 };
 
 // Save API configuration to localStorage
@@ -98,6 +104,9 @@ export const fetchAssetsFromApi = async (): Promise<Asset[]> => {
     return [];
   }
 };
+
+// Alias for backward compatibility
+export const fetchAllAssets = fetchAssetsFromApi;
 
 // Create a new asset via API
 export const createAssetViaApi = async (asset: Asset): Promise<Asset | null> => {
