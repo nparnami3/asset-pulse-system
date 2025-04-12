@@ -1,25 +1,36 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, FileSpreadsheet, Upload, Download, AlertCircle, CheckCircle } from 'lucide-react';
+import { Loader2, FileSpreadsheet, Upload, Download, AlertCircle, CheckCircle, ServerOff } from 'lucide-react';
 import { useAssets } from '@/context/AssetContext';
 import { readExcelFile, generateExcelTemplate } from '@/utils/excelHandler';
-import { importAssets as apiImportAssets } from '@/utils/apiConnection';
+import { importAssets as apiImportAssets, testApiConnection } from '@/utils/apiConnection';
 import { useApi } from '@/context/ApiContext';
 import { toast } from 'sonner';
 
 const ImportData = () => {
   const { importAssets, refreshAssets } = useAssets();
-  const { isConnected: apiConnected } = useApi();
+  const { isConnected: apiConnected, testConnection } = useApi();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [verifyingConnection, setVerifyingConnection] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check API connection on component mount
+  useEffect(() => {
+    const checkApiConnection = async () => {
+      setVerifyingConnection(true);
+      await testConnection();
+      setVerifyingConnection(false);
+    };
+    checkApiConnection();
+  }, [testConnection]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -60,8 +71,15 @@ const ImportData = () => {
       console.log("Assets read from file:", assets.length);
       console.log("Sample asset:", assets[0]);
       console.log("API Connected status:", apiConnected);
-      
+
+      // Verify API connection before proceeding with import
       if (apiConnected) {
+        // Test connection again to be sure
+        const isConnected = await testApiConnection();
+        if (!isConnected) {
+          throw new Error("API connection failed. Please check your API configuration and make sure the server is running.");
+        }
+        
         // If API is connected, use it for import
         const success = await apiImportAssets(assets);
         if (success) {
@@ -100,6 +118,19 @@ const ImportData = () => {
     }
   };
 
+  const handleRetryConnection = async () => {
+    setVerifyingConnection(true);
+    const result = await testConnection();
+    setVerifyingConnection(false);
+    
+    if (result) {
+      toast.success("API connection successful!");
+      setError(null);
+    } else {
+      setError("API connection failed. Make sure your API server is running correctly.");
+    }
+  };
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">Import Asset Data</h2>
@@ -120,7 +151,7 @@ const ImportData = () => {
               />
               <Button 
                 onClick={handleImport} 
-                disabled={!file || loading}
+                disabled={!file || loading || verifyingConnection}
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -137,10 +168,39 @@ const ImportData = () => {
             )}
           </div>
           
+          {!apiConnected && !error && (
+            <Alert className="mb-4 border-amber-500 text-amber-700 bg-amber-50">
+              <ServerOff className="h-4 w-4" />
+              <AlertDescription>
+                API server not connected. Data will be imported locally only.
+                <Button 
+                  variant="link" 
+                  className="p-0 ml-2 text-amber-700 underline h-auto" 
+                  onClick={handleRetryConnection}
+                  disabled={verifyingConnection}
+                >
+                  {verifyingConnection ? 'Checking...' : 'Try to connect'}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>
+                {error}
+                {error.includes('API') && (
+                  <Button 
+                    variant="link" 
+                    className="p-0 ml-2 text-red-700 underline h-auto" 
+                    onClick={handleRetryConnection}
+                    disabled={verifyingConnection}
+                  >
+                    {verifyingConnection ? 'Checking...' : 'Retry connection'}
+                  </Button>
+                )}
+              </AlertDescription>
             </Alert>
           )}
           
@@ -164,6 +224,17 @@ const ImportData = () => {
               ) : (
                 <li className="text-amber-600 font-medium">API Not Connected: Data will only be imported locally</li>
               )}
+            </ul>
+          </div>
+          
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 className="font-medium mb-2 text-blue-700">API Connection Troubleshooting</h4>
+            <ul className="list-disc list-inside text-sm space-y-1 text-blue-700">
+              <li>Make sure your API server is running on the configured URL</li>
+              <li>Default URL is <code className="bg-blue-100 px-1 py-0.5 rounded">{localStorage.getItem('itams-api-config') ? JSON.parse(localStorage.getItem('itams-api-config') || '{}').url : 'http://localhost:3001'}</code></li>
+              <li>Check server console for any errors</li>
+              <li>Verify your MySQL database is running and properly configured</li>
+              <li>You can configure the API URL in the API Configuration page</li>
             </ul>
           </div>
         </Card>

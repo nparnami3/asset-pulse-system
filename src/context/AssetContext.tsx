@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { fetchAllAssets as apiFetchAssets } from '@/utils/apiConnection';
@@ -77,7 +76,6 @@ interface AssetContextType {
 
 const AssetContext = createContext<AssetContextType | undefined>(undefined);
 
-// Sample asset data
 const initialAssets: Asset[] = [
   {
     asset_id: "UBITASTPC001",
@@ -229,7 +227,6 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [filteredAssets, setFilteredAssets] = useState<Asset[]>(assets);
   const [loading, setLoading] = useState(false);
 
-  // Fetch assets from API when connected
   const refreshAssets = async () => {
     if (!apiConnected) {
       console.log("API not connected - skipping refresh");
@@ -245,17 +242,17 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setAssets(apiAssets);
         toast.success(`Loaded ${apiAssets.length} assets from database`);
       } else {
-        console.log("No assets returned from API");
+        console.log("No assets returned from API or empty array returned");
+        toast.info("No assets found in database");
       }
     } catch (error) {
       console.error("Error refreshing assets from API:", error);
-      toast.error("Failed to load assets from API");
+      toast.error(`Failed to load assets from API: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
   
-  // Load assets from API on mount or when API connection changes
   useEffect(() => {
     console.log("API connected status changed:", apiConnected);
     if (apiConnected) {
@@ -263,11 +260,9 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [apiConnected]);
 
-  // Update filtered assets when assets or filter changes
   useEffect(() => {
     setLoading(true);
     const results = assets.filter(asset => {
-      // Apply filters
       return Object.entries(filter).every(([key, value]) => {
         if (!value || value === "") return true;
         if (key === 'search') {
@@ -284,7 +279,6 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
     });
     
-    // Short timeout to simulate database query
     setTimeout(() => {
       setFilteredAssets(results);
       setLoading(false);
@@ -292,7 +286,6 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [assets, filter]);
 
   const addAsset = (asset: Asset) => {
-    // Simulate a database insert
     setLoading(true);
     setTimeout(() => {
       setAssets(prev => [...prev, { 
@@ -306,7 +299,6 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const importAssets = (newAssets: Asset[]) => {
-    // Simulate bulk import
     setLoading(true);
     setTimeout(() => {
       const timestamp = new Date().toISOString();

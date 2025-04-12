@@ -65,9 +65,11 @@ export const testApiConnection = async (): Promise<boolean> => {
   } catch (error) {
     if (error.name === 'AbortError') {
       console.error("API connection timeout - server not responding");
+      toast.error("Connection timeout - is your API server running?");
       return false;
     }
     console.error("API connection error:", error);
+    toast.error(`API connection error: ${error.message || "Unknown error"}`);
     return false;
   }
 };
@@ -191,7 +193,20 @@ export const importAssets = async (assets: Asset[]): Promise<boolean> => {
     const config = getApiConfig();
     console.log("Importing assets via API:", config.url);
     console.log("Number of assets to import:", assets.length);
+    
+    if (assets.length === 0) {
+      toast.error("No assets to import");
+      return false;
+    }
+    
     console.log("First asset sample:", assets[0]);
+    
+    // Check API connection first
+    const isApiWorking = await testApiConnection();
+    if (!isApiWorking) {
+      toast.error("Cannot import - API connection failed. Is your server running?");
+      return false;
+    }
     
     const response = await fetch(`${config.url}/api/assets/import`, {
       method: 'POST',

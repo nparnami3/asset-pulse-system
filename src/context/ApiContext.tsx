@@ -29,19 +29,36 @@ export const ApiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const checkConnection = async () => {
       if (isApiConfigured()) {
         setConnecting(true);
-        const connected = await testApiConnection();
-        setIsConnected(connected);
-        setConnecting(false);
+        try {
+          const connected = await testApiConnection();
+          setIsConnected(connected);
+          if (connected) {
+            console.log("API connected successfully on load");
+          } else {
+            console.log("API connection failed on load");
+          }
+        } catch (error) {
+          console.error("Error checking API connection:", error);
+          setIsConnected(false);
+        } finally {
+          setConnecting(false);
+        }
       }
     };
     
     checkConnection();
   }, []);
 
-  const updateApiConfig = (config: ApiConfig) => {
+  const updateApiConfig = async (config: ApiConfig) => {
     setApiConfig(config);
     saveApiConfig(config);
     toast.success("API configuration updated");
+    
+    // Test the new configuration immediately
+    const connected = await testConnection();
+    if (connected) {
+      toast.success("Successfully connected to new API URL");
+    }
   };
 
   const testConnection = async (): Promise<boolean> => {
@@ -61,6 +78,7 @@ export const ApiProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error) {
       console.error("Error testing connection:", error);
       toast.error(`Connection error: ${error.message || 'Unknown error'}`);
+      setIsConnected(false);
       return false;
     } finally {
       setConnecting(false);
