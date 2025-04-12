@@ -231,7 +231,10 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Fetch assets from API when connected
   const refreshAssets = async () => {
-    if (!apiConnected) return;
+    if (!apiConnected) {
+      console.log("API not connected - skipping refresh");
+      return;
+    }
     
     setLoading(true);
     try {
@@ -240,6 +243,9 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (apiAssets && apiAssets.length > 0) {
         console.log(`Loaded ${apiAssets.length} assets from API`);
         setAssets(apiAssets);
+        toast.success(`Loaded ${apiAssets.length} assets from database`);
+      } else {
+        console.log("No assets returned from API");
       }
     } catch (error) {
       console.error("Error refreshing assets from API:", error);
@@ -251,6 +257,7 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   // Load assets from API on mount or when API connection changes
   useEffect(() => {
+    console.log("API connected status changed:", apiConnected);
     if (apiConnected) {
       refreshAssets();
     }

@@ -76,6 +76,7 @@ export const testApiConnection = async (): Promise<boolean> => {
 export const fetchAllAssets = async (): Promise<Asset[]> => {
   try {
     const config = getApiConfig();
+    console.log("Fetching assets from API:", config.url);
     
     // Add timeout to the fetch request
     const controller = new AbortController();
@@ -93,10 +94,13 @@ export const fetchAllAssets = async (): Promise<Asset[]> => {
     clearTimeout(timeoutId);
     
     if (!response.ok) {
-      throw new Error(`Failed to fetch assets: ${response.status}`);
+      const errorText = await response.text();
+      console.error("API responded with error:", response.status, errorText);
+      throw new Error(`Failed to fetch assets: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
+    console.log("Successfully fetched assets from API:", data.length);
     return data;
   } catch (error) {
     console.error("Error fetching assets:", error);
@@ -118,7 +122,8 @@ export const addAsset = async (asset: Asset): Promise<Asset | null> => {
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to add asset: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Failed to add asset: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
@@ -144,7 +149,8 @@ export const updateAsset = async (id: string, asset: Asset): Promise<Asset | nul
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to update asset: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Failed to update asset: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
@@ -166,7 +172,8 @@ export const deleteAsset = async (id: string): Promise<boolean> => {
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to delete asset: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Failed to delete asset: ${response.status} - ${errorText}`);
     }
     
     toast.success("Asset deleted successfully!");
@@ -184,6 +191,7 @@ export const importAssets = async (assets: Asset[]): Promise<boolean> => {
     const config = getApiConfig();
     console.log("Importing assets via API:", config.url);
     console.log("Number of assets to import:", assets.length);
+    console.log("First asset sample:", assets[0]);
     
     const response = await fetch(`${config.url}/api/assets/import`, {
       method: 'POST',

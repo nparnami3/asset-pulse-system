@@ -13,7 +13,7 @@ import { useApi } from '@/context/ApiContext';
 import { toast } from 'sonner';
 
 const ImportData = () => {
-  const { importAssets } = useAssets();
+  const { importAssets, refreshAssets } = useAssets();
   const { isConnected: apiConnected } = useApi();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -57,15 +57,19 @@ const ImportData = () => {
         return;
       }
       
+      console.log("Assets read from file:", assets.length);
+      console.log("Sample asset:", assets[0]);
+      console.log("API Connected status:", apiConnected);
+      
       if (apiConnected) {
         // If API is connected, use it for import
         const success = await apiImportAssets(assets);
         if (success) {
-          // After successful API import, refresh local data
-          importAssets(assets);
+          // After successful API import, refresh data from API
+          await refreshAssets();
           setSuccess(`Successfully imported ${assets.length} assets via API`);
         } else {
-          throw new Error('API import failed');
+          throw new Error('API import failed. Make sure your API server is running correctly.');
         }
       } else {
         // Fall back to local import if API not connected
