@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { Asset } from "@/context/AssetContext";
 
@@ -187,7 +186,7 @@ export const deleteAsset = async (id: string): Promise<boolean> => {
   }
 };
 
-// Import multiple assets
+// Import multiple assets with improved error handling
 export const importAssets = async (assets: Asset[]): Promise<boolean> => {
   try {
     const config = getApiConfig();
@@ -219,6 +218,18 @@ export const importAssets = async (assets: Asset[]): Promise<boolean> => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Import failed with status:", response.status, errorText);
+      
+      // Parse JSON error if possible
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error && errorJson.error.includes("Duplicate entry")) {
+          toast.error("Import failed: Duplicate asset ID exists in the database. Try regenerating IDs.");
+          return false;
+        }
+      } catch (e) {
+        // Not JSON, continue with regular error handling
+      }
+      
       throw new Error(`Failed to import assets: ${response.status} - ${errorText}`);
     }
     
@@ -228,7 +239,13 @@ export const importAssets = async (assets: Asset[]): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error("Error importing assets:", error);
-    toast.error(`Failed to import assets: ${error.message || 'Unknown error'}`);
+    
+    // Special handling for duplicate key errors
+    if (error.message && error.message.includes('Duplicate entry')) {
+      toast.error("Import failed: Asset with same ID already exists in database");
+    } else {
+      toast.error(`Failed to import assets: ${error.message || 'Unknown error'}`);
+    }
     return false;
   }
 };

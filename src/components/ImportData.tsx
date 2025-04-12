@@ -102,7 +102,13 @@ const ImportData = () => {
       setFile(null);
     } catch (error) {
       console.error('Import error:', error);
-      setError(`Error importing data: ${error.message || 'Please check file format and try again'}`);
+      
+      // Check for duplicate key error message
+      if (error.message && error.message.includes('Duplicate entry')) {
+        setError('Error: Asset ID already exists in the database. Try importing with unique IDs.');
+      } else {
+        setError(`Error importing data: ${error.message || 'Please check file format and try again'}`);
+      }
     } finally {
       setLoading(false);
     }

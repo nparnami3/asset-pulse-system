@@ -19,8 +19,12 @@ export function readExcelFile(file: File): Promise<Asset[]> {
         const assets: Asset[] = jsonData.map((row: any, index) => {
           // Create a valid asset_id based on the data
           const deviceTypeCode = deviceTypes[row.asset_type] || 'OT';
+          // Use timestamp to make IDs more unique
+          const timestamp = new Date().getTime();
+          const randomStr = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
           const sequentialNumber = (index + 1).toString().padStart(3, '0');
-          const asset_id = `UBITAST${deviceTypeCode}${sequentialNumber}`;
+          // Use timestamp and random number to ensure uniqueness
+          const asset_id = `UBITAST${deviceTypeCode}${timestamp % 1000}${randomStr}`;
           
           return {
             asset_id,
